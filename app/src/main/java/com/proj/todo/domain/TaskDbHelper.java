@@ -9,16 +9,20 @@ import android.database.sqlite.SQLiteOpenHelper;
 import java.util.ArrayList;
 
 /**
- * Created by stpl on 4/24/2017.
+ * Database Helper class for SQL operations.
  */
 
 public class TaskDbHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "contactsManager.db";
-    private static final String TABLE_TASKS="tasks";
-    private static int VERSION=1;
-    private static final String KEY_ID="id";
-    private static final String KEY_TASK_CONTENT="content";
-    private static final String KEY_DATE="date_created";
+    private static final String TABLE_TASKS = "tasks";
+    private static int VERSION = 1;
+    private static final String KEY_ID = "id";
+    private static final String KEY_TASK_CONTENT = "content";
+    private static final String KEY_DATE = "date_created";
+    private static final String KEY_IS_DONE = "is_done";
+    private static final int TASK_DONE = 1;
+    private static final int TASK_NOT_DONE = 0;
+
     public TaskDbHelper(Context context) {
         super(context, DATABASE_NAME, null, VERSION);
     }
@@ -27,7 +31,7 @@ public class TaskDbHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         String CREATE_TASKS_TABLE = "CREATE TABLE " + TABLE_TASKS + "("
                 + KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," + KEY_TASK_CONTENT + " TEXT,"
-                +KEY_DATE+" TEXT)";
+                + KEY_DATE + " TEXT," + KEY_IS_DONE + " TEXT)";
         db.execSQL(CREATE_TASKS_TABLE);
 
     }
@@ -39,34 +43,40 @@ public class TaskDbHelper extends SQLiteOpenHelper {
         // Create tables again
         onCreate(db);
     }
-    public long addTask(TaskModel task){
+
+    public long addTask(TaskModel task) {
         SQLiteDatabase db = this.getWritableDatabase();
         long id;
         ContentValues values = new ContentValues();
-        values.put(KEY_TASK_CONTENT,task.getTask());
-        values.put(KEY_DATE,task.getDate_created());
-        id=db.insert(TABLE_TASKS,null,values);
+        values.put(KEY_TASK_CONTENT, task.getTask());
+        values.put(KEY_DATE, task.getDate_created());
+        id = db.insert(TABLE_TASKS, null, values);
         db.close();
         return id;
     }
+
     public int getTasksCount() {
         String countQuery = "SELECT  * FROM " + TABLE_TASKS;
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery(countQuery, null);
-        int count=cursor.getCount();
+        int count = cursor.getCount();
         cursor.close();
 
         // return count
         return count;
     }
-    public ArrayList<TaskModel> getAllTasks(){
-        ArrayList<TaskModel> taskModels=new ArrayList<>();
+
+    public ArrayList<TaskModel> getAllTasks() {
+        ArrayList<TaskModel> taskModels = new ArrayList<>();
         String selectQuery = "SELECT  * FROM " + TABLE_TASKS;
         SQLiteDatabase db = this.getWritableDatabase();
         Cursor cursor = db.rawQuery(selectQuery, null);
-        if(cursor.moveToFirst()){
-            do{
-                TaskModel model=new TaskModel(cursor.getString(1),cursor.getString(2),cursor.getInt(0));
+        if (cursor.moveToFirst()) {
+            do {
+                boolean isDone;
+                isDone = cursor.getInt(3) == TASK_DONE;
+                TaskModel model = new TaskModel(cursor.getString(1), cursor.getString(2), cursor
+                        .getInt(0), isDone);
                 taskModels.add(model);
             }
             while (cursor.moveToNext());
@@ -75,18 +85,22 @@ public class TaskDbHelper extends SQLiteOpenHelper {
         return taskModels;
 
     }
-    public boolean deleteTask(long id){
-        SQLiteDatabase db=this.getWritableDatabase();
-        return db.delete(TABLE_TASKS,KEY_ID+" = ?",new String[]{id+""})>0;
 
+    public boolean deleteTask(long id) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        return db.delete(TABLE_TASKS, KEY_ID + " = ?", new String[]{id + ""}) > 0;
     }
 
 
     public void upDate(TaskModel task) {
-        SQLiteDatabase db=this.getWritableDatabase();
+        SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put(KEY_TASK_CONTENT,task.getTask());
-        values.put(KEY_DATE,task.getDate_created());
-        db.update(TABLE_TASKS,values,KEY_ID+" = ?",new String[]{task.getId()+""});
+        values.put(KEY_TASK_CONTENT, task.getTask());
+        values.put(KEY_DATE, task.getDate_created());
+
+        int isDone;
+        isDone = task.isDone() ? TASK_DONE : TASK_NOT_DONE;
+        values.put(KEY_IS_DONE, isDone);
+        db.update(TABLE_TASKS, values, KEY_ID + " = ?", new String[]{task.getId() + ""});
     }
 }
